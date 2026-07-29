@@ -7,6 +7,8 @@ import { Compass, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 const BRANCHES = ["Computer Science", "Electronics", "Mechanical", "Civil", "Other"];
 const SKILLS = ["Python", "JavaScript", "HTML/CSS", "Excel", "Design", "None yet"];
@@ -40,6 +42,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { saveProfile } = useProfile();
   const [step, setStep] = useState(0);
   const [branch, setBranch] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
@@ -48,6 +52,7 @@ export default function OnboardingPage() {
   const [style, setStyle] = useState("");
   const [budget, setBudget] = useState(10000);
   const [hours, setHours] = useState(2);
+  const [saving, setSaving] = useState(false);
 
   const toggle = (arr: string[], setArr: (v: string[]) => void, item: string) =>
     setArr(arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item]);
@@ -61,9 +66,29 @@ export default function OnboardingPage() {
     true,
   ][step];
 
-  const next = () => {
-    if (step < STEPS.length - 1) setStep(step + 1);
-    else router.push("/dashboard");
+  const next = async () => {
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+    } else {
+      try {
+        setSaving(true);
+        if (user?.uid) {
+          await saveProfile(user.uid, {
+            branch,
+            skills,
+            interests,
+            goal,
+            learningStyle: style,
+            monthlyBudget: budget,
+            dailyStudyHours: hours,
+          });
+        }
+        router.push("/dashboard");
+      } catch (error) {
+        console.error("Failed to save profile:", error);
+        setSaving(false);
+      }
+    }
   };
 
   return (
@@ -209,11 +234,11 @@ export default function OnboardingPage() {
           </AnimatePresence>
 
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-            <Button variant="ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>
+            <Button variant="ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0 || saving}>
               <ArrowLeft size={16} /> Back
             </Button>
-            <Button variant="primary" onClick={next} disabled={!canProceed}>
-              {step === STEPS.length - 1 ? "Build my roadmap" : "Continue"}
+            <Button variant="primary" onClick={next} disabled={!canProceed || saving}>
+              {saving ? "Saving..." : step === STEPS.length - 1 ? "Build my roadmap" : "Continue"}
               <ArrowRight size={16} />
             </Button>
           </div>

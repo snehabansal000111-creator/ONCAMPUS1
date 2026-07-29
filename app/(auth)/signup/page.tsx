@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import { Compass, Mail, Lock, User } from "lucide-react";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import Button from "@/components/ui/Button";
 
 const schema = z.object({
@@ -16,6 +20,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -23,11 +29,14 @@ export default function SignupPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const onSubmit = async (values: FormValues) => {
-    // TODO: replace with Supabase auth
-    // const supabase = createClient();
-    // await supabase.auth.signUp(values);
-    console.log("signup", values);
-    window.location.href = "/onboarding";
+    try {
+      setError(null);
+      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      router.push("/onboarding");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create account";
+      setError(message);
+    }
   };
 
   return (
@@ -49,6 +58,12 @@ export default function SignupPage() {
         <p className="mt-1 text-sm text-muted text-center">Takes about a minute. The roadmap takes three.</p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-4">
+          {error && (
+            <div className="rounded-xl2 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-medium text-ink" htmlFor="name">Full name</label>
             <div className="mt-1.5 relative">

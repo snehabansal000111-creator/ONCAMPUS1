@@ -2,14 +2,38 @@
 
 import { motion } from "framer-motion";
 import { Sparkles, TrendingUp, PiggyBank, Lightbulb } from "lucide-react";
-
-const insights = [
-  { icon: TrendingUp, text: "Biggest category this month: Food, at ₹2,800 (29% of total spend)." },
-  { icon: TrendingUp, text: "Spending trend: up 18% versus last month, mostly from food delivery." },
-  { icon: PiggyBank, text: "Savings opportunity: cut two food delivery orders/week to save ~₹900/month." },
-];
+import { useFinancialAnalysis } from "@/hooks/useAiFinancialAssistant";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AIInsights() {
+  const { user } = useAuth();
+  const { insight, loading } = useFinancialAnalysis(user?.uid, "full");
+
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden rounded-xl3 bg-gradient-primary p-6 md:p-7 text-white h-32 animate-pulse"
+      />
+    );
+  }
+
+  if (!insight) {
+    return null;
+  }
+
+  // Parse insight text into bullet points
+  const lines = insight.analysis
+    ?.split("\n")
+    .filter((line: string) => line.trim().length > 0)
+    .slice(0, 3) || [];
+
+  const insights = lines.map((text: string, i: number) => ({
+    icon: i === 0 ? TrendingUp : i === 1 ? TrendingUp : PiggyBank,
+    text: text.trim(),
+  }));
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -31,7 +55,7 @@ export default function AIInsights() {
       </p>
 
       <div className="relative mt-5 grid sm:grid-cols-3 gap-3">
-        {insights.map((ins, i) => (
+        {insights.map((ins: typeof insights[0], i: number) => (
           <div key={i} className="flex items-start gap-2.5 rounded-xl2 bg-white/10 p-3.5 text-sm">
             <ins.icon size={16} className="shrink-0 mt-0.5" />
             <span className="text-white/90 leading-snug">{ins.text}</span>

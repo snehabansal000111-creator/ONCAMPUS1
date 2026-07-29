@@ -1,16 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MoreVertical, Pencil, Trash2, Eye } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import { transactions } from "@/lib/mock-data";
+import { useExpenses } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR, cn } from "@/lib/utils";
 
-export default function TransactionList({ filter }: { filter: string | null }) {
+export default function TransactionList({ filter, refreshKey }: { filter: string | null; refreshKey?: number }) {
+  const { user } = useAuth();
+  const { expenses, loading } = useExpenses(user?.uid, undefined, refreshKey);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const list = filter ? transactions.filter((t) => t.category === filter) : transactions;
+  const [selectedTransaction, setSelectedTransaction] = useState<typeof expenses[0] | null>(null);
+  const list = filter ? expenses.filter((t) => t.category === filter) : expenses;
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (response.ok) {
+        // Transaction will be removed automatically when the hook refetches
+        setMenuOpen(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+    }
+  };
+
+  const handleEdit = (transaction: typeof expenses[0]) => {
+    setSelectedTransaction(transaction);
+    setMenuOpen(null);
+  };
 
   return (
     <Card>
@@ -49,21 +70,30 @@ export default function TransactionList({ filter }: { filter: string | null }) {
               </button>
               {menuOpen === t.id && (
                 <div className="absolute right-0 top-9 z-10 w-36 rounded-xl2 border border-border bg-white shadow-lift py-1">
-                  {[
-                    { icon: Eye, label: "View details" },
-                    { icon: Pencil, label: "Edit" },
-                    { icon: Trash2, label: "Delete" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.label}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50",
-                        opt.label === "Delete" && "text-danger"
-                      )}
-                    >
-                      <opt.icon size={13} /> {opt.label}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setSelectedTransaction(t)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50"
+                    )}
+                  >
+                    <Eye size={13} /> View details
+                  </button>
+                  <button
+                    onClick={() => handleEdit(t)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50"
+                    )}
+                  >
+                    <Pencil size={13} /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(t.id)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-slate-50 text-danger"
+                    )}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
                 </div>
               )}
             </div>

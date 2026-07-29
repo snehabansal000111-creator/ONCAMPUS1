@@ -3,15 +3,27 @@
 import Card from "@/components/ui/Card";
 import ProgressRing from "@/components/ui/ProgressRing";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useExpenseStats } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/utils";
-import { currentStudent } from "@/lib/mock-data";
 
-export default function BudgetProgress() {
-  const spent = 9600;
-  const budget = currentStudent.monthlyBudget;
-  const pctUsed = Math.round((spent / budget) * 100);
+interface Props {
+  refreshKey?: number;
+}
+
+export default function BudgetProgress({ refreshKey }: Props) {
+  const { user } = useAuth();
+  const { stats, loading } = useExpenseStats(user?.uid, undefined, refreshKey);
+
+  if (loading) return <Card><div className="h-32 bg-slate-100 animate-pulse rounded" /></Card>;
+  if (!stats) return <Card>No budget data</Card>;
+
+  const spent = stats.totalSpent;
+  const budget = stats.monthlyBudget;
+  const pctUsed = stats.percentUsed;
   const onTrack = pctUsed < 85;
-  const dailyLimit = Math.round((budget - spent) / 6);
+  const daysRemaining = Math.max(1, 30 - new Date().getDate());
+  const dailyLimit = Math.round((budget - spent) / daysRemaining);
 
   return (
     <Card>

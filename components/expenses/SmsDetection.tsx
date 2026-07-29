@@ -1,24 +1,97 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquareText, Check, Pencil, X, Sparkles } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import { smsDetected as initial } from "@/lib/mock-data";
+import { useSmsTransactions } from "@/hooks/useExpenses";
+import { useSmsDetectionActions } from "@/hooks/useSmsDetection";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/utils";
 import type { SmsDetectedTransaction } from "@/types";
 
-export default function SmsDetection() {
-  const [items, setItems] = useState<SmsDetectedTransaction[]>(initial);
+interface Props {
+  onExpenseAdded?: () => void;
+}
 
-  const setStatus = (id: string, status: SmsDetectedTransaction["status"]) =>
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)));
+export default function SmsDetection({ onExpenseAdded }: Props) {
+  const { user } = useAuth();
+  const { transactions, loading } = useSmsTransactions(user?.uid, "pending");
+  const { accept, reject, edit } = useSmsDetectionActions();
+  const [items, setItems] = useState<SmsDetectedTransaction[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<{
+    merchant?: string;
+    category?: string;
+    amount?: number;
+    paymentMethod?: string;
+  }>({});
+
+  useEffect(() => {
+    setItems(transactions);
+  }, [transactions]);
+
+  const handleAccept = async (id: string) => {
+    try {
+      console.log("[SmsDetection] handleAccept called with id:", id);
+      const result = await accept(id);
+      console.log("[SmsDetection] accept() returned:", result);
+
+      if (result) {
+        console.log("[SmsDetection] Removing SMS from list");
+        setItems((prev) => prev.filter((it) => it.id !== id));
+        console.log("[SmsDetection] Calling onExpenseAdded callback");
+        onExpenseAdded?.();
+        console.log("[SmsDetection] onExpenseAdded callback executed");
+      } else {
+        console.error("[SmsDetection] accept() returned false");
+      }
+    } catch (err) {
+      console.error("[SmsDetection] handleAccept error:", err);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (await reject(id)) {
+      setItems((prev) => prev.filter((it) => it.id !== id));
+    }
+  };
+
+  const handleEditClick = (transaction: SmsDetectedTransaction) => {
+    setEditingId(transaction.id);
+    setEditData({
+      merchant: transaction.merchant,
+      category: transaction.category,
+      amount: transaction.amount,
+      paymentMethod: transaction.paymentMethod,
+    });
+  };
+
+  const handleEditSave = async (id: string) => {
+    if (await edit(id, editData)) {
+      setItems((prev) =>
+        prev.map((it) => {
+          if (it.id === id) {
+            return {
+              ...it,
+              merchant: editData.merchant ?? it.merchant,
+              category: editData.category ?? it.category,
+              amount: editData.amount ?? it.amount,
+              paymentMethod: editData.paymentMethod ?? it.paymentMethod,
+            } as SmsDetectedTransaction;
+          }
+          return it;
+        })
+      );
+      setEditingId(null);
+    }
+  };
 
   const pending = items.filter((i) => i.status === "pending");
 
   return (
-    <Card>
+    <Card id="sms-section">
       <div className="flex items-center justify-between">
         <h3 className="font-display font-semibold text-ink flex items-center gap-2">
           <MessageSquareText size={18} className="text-primary-600" /> Auto SMS Detection
@@ -59,20 +132,21 @@ export default function SmsDetection() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     aria-label="Accept"
-                    onClick={() => setStatus(t.id, "accepted")}
+                    onClick={() => handleAccept(t.id)}
                     className="grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
                   >
                     <Check size={15} />
                   </button>
                   <button
                     aria-label="Edit"
+                    onClick={() => handleEditClick(t)}
                     className="grid h-8 w-8 place-items-center rounded-full bg-slate-100 text-muted hover:bg-slate-200 transition-colors"
                   >
                     <Pencil size={13} />
                   </button>
                   <button
                     aria-label="Ignore"
-                    onClick={() => setStatus(t.id, "ignored")}
+                    onClick={() => handleReject(t.id)}
                     className="grid h-8 w-8 place-items-center rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
                   >
                     <X size={15} />

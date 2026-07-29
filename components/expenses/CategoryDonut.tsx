@@ -2,15 +2,40 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import Card from "@/components/ui/Card";
-import { spendingByCategory } from "@/lib/mock-data";
+import { useExpenseStats } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR, cn } from "@/lib/utils";
+
+const categoryColors: Record<string, string> = {
+  Food: "#2E5EFF",
+  Shopping: "#14C7D8",
+  Transport: "#5FE0E9",
+  Education: "#8AACFF",
+  Entertainment: "#F59E0B",
+  "Hostel/PG": "#1735AD",
+  Health: "#16A34A",
+  Others: "#94A3B8",
+};
 
 interface Props {
   selected: string | null;
   onSelect: (category: string | null) => void;
+  refreshKey?: number;
 }
 
-export default function CategoryDonut({ selected, onSelect }: Props) {
+export default function CategoryDonut({ selected, onSelect, refreshKey }: Props) {
+  const { user } = useAuth();
+  const { stats, loading } = useExpenseStats(user?.uid, undefined, refreshKey);
+
+  if (loading) return <Card><div className="h-64 bg-slate-100 animate-pulse rounded" /></Card>;
+  if (!stats) return <Card>No spending data</Card>;
+
+  const spendingByCategory = Object.entries(stats.spendingByCategory).map(([cat, val]) => ({
+    category: cat,
+    value: val,
+    color: categoryColors[cat] || "#94A3B8",
+  }));
+
   const total = spendingByCategory.reduce((s, c) => s + c.value, 0);
 
   return (

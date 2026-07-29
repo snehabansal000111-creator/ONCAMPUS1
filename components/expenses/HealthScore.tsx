@@ -2,16 +2,28 @@
 
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
+import { useFinancialHealthScore } from "@/hooks/useAiFinancialAssistant";
+import { useAuth } from "@/hooks/useAuth";
 
-const factors = [
-  { label: "Savings", score: 78 },
-  { label: "Budget control", score: 84 },
-  { label: "Spending consistency", score: 88 },
-  { label: "Unnecessary expenses", score: 76 },
-];
+interface Props {
+  refreshKey?: number;
+}
 
-export default function HealthScore() {
-  const overall = Math.round(factors.reduce((s, f) => s + f.score, 0) / factors.length);
+export default function HealthScore({ refreshKey }: Props) {
+  const { user } = useAuth();
+  const { insight, loading } = useFinancialHealthScore(user?.uid);
+
+  if (loading) return <Card><div className="h-32 bg-slate-100 animate-pulse rounded" /></Card>;
+  if (!insight) return <Card>No health data available</Card>;
+
+  const factors = [
+    { label: "Budget control", score: insight.components.budgetControl },
+    { label: "Savings rate", score: insight.components.savingsRate },
+    { label: "Consistency", score: insight.components.consistency },
+    { label: "Organization", score: insight.components.organization },
+  ];
+
+  const overall = insight.overallScore;
 
   return (
     <Card>

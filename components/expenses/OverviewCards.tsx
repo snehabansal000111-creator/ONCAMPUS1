@@ -3,47 +3,72 @@
 import { motion } from "framer-motion";
 import { Wallet, TrendingDown, PiggyBank, TrendingUp } from "lucide-react";
 import Card from "@/components/ui/Card";
+import { useExpenseStats } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { formatINR } from "@/lib/utils";
 
-const cards = [
-  {
-    label: "Monthly Budget",
-    amount: 12000,
-    change: "Same as last month",
-    tone: "neutral" as const,
-    icon: Wallet,
-  },
-  {
-    label: "Total Spent",
-    amount: 9600,
-    change: "+18% vs last month",
-    tone: "warning" as const,
-    icon: TrendingUp,
-  },
-  {
-    label: "Remaining Budget",
-    amount: 2400,
-    change: "6 days left in month",
-    tone: "danger" as const,
-    icon: TrendingDown,
-  },
-  {
-    label: "Estimated Savings",
-    amount: 1800,
-    change: "+₹300 vs last month",
-    tone: "success" as const,
-    icon: PiggyBank,
-  },
-];
+interface Props {
+  refreshKey?: number;
+}
 
-const dot = {
-  neutral: "bg-slate-300",
-  warning: "bg-warning",
-  danger: "bg-danger",
-  success: "bg-success",
-};
+export default function OverviewCards({ refreshKey }: Props) {
+  const { user } = useAuth();
+  console.log("[OverviewCards] Component rendered with refreshKey:", refreshKey, "userId:", user?.uid);
+  const { stats, loading } = useExpenseStats(user?.uid, undefined, refreshKey);
+  console.log("[OverviewCards] Stats received:", stats);
 
-export default function OverviewCards() {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="h-32 bg-slate-100 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return <div>No budget data available</div>;
+  }
+
+  const dot = {
+    neutral: "bg-slate-300",
+    warning: "bg-warning",
+    danger: "bg-danger",
+    success: "bg-success",
+  };
+
+  const cards = [
+    {
+      label: "Monthly Budget",
+      amount: stats.monthlyBudget,
+      change: "Same as last month",
+      tone: "neutral" as const,
+      icon: Wallet,
+    },
+    {
+      label: "Total Spent",
+      amount: stats.totalSpent,
+      change: stats.totalSpent > 7200 ? "+18% vs last month" : "Lower than average",
+      tone: (stats.totalSpent > stats.monthlyBudget * 0.8 ? "warning" : "success") as keyof typeof dot,
+      icon: TrendingUp,
+    },
+    {
+      label: "Remaining Budget",
+      amount: stats.remaining,
+      change: "6 days left in month",
+      tone: (stats.remaining < 1000 ? "danger" : "neutral") as keyof typeof dot,
+      icon: TrendingDown,
+    },
+    {
+      label: "Estimated Savings",
+      amount: Math.max(0, stats.remaining),
+      change: `₹${Math.max(0, stats.remaining)} available`,
+      tone: "success" as const,
+      icon: PiggyBank,
+    },
+  ];
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((c, i) => (

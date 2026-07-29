@@ -1,14 +1,31 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/dashboard/TopBar";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 import { currentStudent } from "@/lib/mock-data";
 import { formatINR } from "@/lib/utils";
 
 export default function ProfilePage() {
+  const { signOut } = useAuth();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
   const s = currentStudent;
+
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true);
+      await signOut();
+      router.push("/login");
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      setSigningOut(false);
+    }
+  };
   return (
     <>
       <TopBar title="Profile" />
@@ -19,7 +36,18 @@ export default function ProfilePage() {
           </div>
           <p className="mt-4 font-display font-semibold text-lg text-ink">{s.name}</p>
           <p className="text-sm text-muted">{s.branch} · {s.year}</p>
-          <Button variant="outline" size="sm" className="mt-5 w-full">Edit profile</Button>
+          <div className="mt-5 space-y-2">
+            <Button variant="outline" size="sm" className="w-full">Edit profile</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-danger"
+              onClick={handleSignOut}
+              disabled={signingOut}
+            >
+              {signingOut ? "Signing out..." : "Sign out"}
+            </Button>
+          </div>
         </Card>
 
         <Card className="md:col-span-2">

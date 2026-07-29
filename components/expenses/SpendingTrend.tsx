@@ -3,13 +3,24 @@
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import Card from "@/components/ui/Card";
+import { useExpenseTrends } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { cn, formatINR } from "@/lib/utils";
-import { monthlyTrend } from "@/lib/mock-data";
 
 const periods = ["Weekly", "Monthly", "Yearly"] as const;
 
-export default function SpendingTrend() {
+interface Props {
+  refreshKey?: number;
+}
+
+export default function SpendingTrend({ refreshKey }: Props) {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<(typeof periods)[number]>("Weekly");
+  const periodMap = { Weekly: "weekly" as const, Monthly: "monthly" as const, Yearly: "monthly" as const };
+  const { trends, loading } = useExpenseTrends(user?.uid, periodMap[period], undefined, refreshKey);
+
+  if (loading) return <Card><div className="h-56 bg-slate-100 animate-pulse rounded mt-4" /></Card>;
+  if (!trends || trends.length === 0) return <Card>No spending data available</Card>;
 
   return (
     <Card>
@@ -33,7 +44,7 @@ export default function SpendingTrend() {
 
       <div className="h-56 mt-4">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={monthlyTrend} margin={{ left: -20, right: 10 }}>
+          <LineChart data={trends} margin={{ left: -20, right: 10 }}>
             <defs>
               <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#2E5EFF" />

@@ -2,7 +2,8 @@
 
 import Card from "@/components/ui/Card";
 import { AlertTriangle, Info, Bell } from "lucide-react";
-import { alerts } from "@/lib/mock-data";
+import { useAlerts } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const iconFor = {
@@ -17,7 +18,17 @@ const toneClasses = {
   danger: "bg-red-50 text-red-700",
 };
 
-export default function SmartAlerts() {
+interface Props {
+  refreshKey?: number;
+}
+
+export default function SmartAlerts({ refreshKey }: Props) {
+  const { user } = useAuth();
+  const { alerts, loading } = useAlerts(user?.uid, refreshKey);
+
+  if (loading) return <Card><div className="h-20 bg-slate-100 animate-pulse rounded mt-4" /></Card>;
+  if (!alerts || alerts.length === 0) return <Card><p className="text-muted text-sm">No alerts</p></Card>;
+
   return (
     <Card>
       <h3 className="font-display font-semibold text-ink flex items-center gap-2">
