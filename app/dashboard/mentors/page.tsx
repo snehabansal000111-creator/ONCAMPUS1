@@ -1,20 +1,54 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/dashboard/TopBar";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import { motion } from "framer-motion";
-import { Calendar } from "lucide-react";
-import { mentors } from "@/lib/mock-data";
+import { Calendar, AlertCircle } from "lucide-react";
+import { useMentors } from "@/hooks/useMentors";
+import { mentors as mockMentors } from "@/lib/mock-data";
 
 export default function MentorsPage() {
+  const router = useRouter();
+  const { mentors: firestoreMentors, loading, error } = useMentors();
+
+  // Use Firestore mentors if available, otherwise fall back to mock data
+  const mentors = firestoreMentors.length > 0 ? firestoreMentors : mockMentors;
+
+  const handleBookSession = (mentorId: string) => {
+    router.push(`/dashboard/mentors/${mentorId}`);
+  };
+
+  const handleViewSessions = () => {
+    router.push("/dashboard/mentors/sessions");
+  };
+
   return (
     <>
       <TopBar title="Mentor & Alumni Connect" />
-      <p className="text-sm text-muted -mt-2 mb-5">
-        Matched by branch, interests, and career goal from your profile.
-      </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+        <p className="text-sm text-muted">
+          Matched by branch, interests, and career goal from your profile.
+        </p>
+        <Button variant="secondary" size="sm" onClick={handleViewSessions}>
+          <Calendar size={14} />
+          My Sessions
+        </Button>
+      </div>
+
+      {error && !mentors && (
+        <Card className="mb-5 flex items-center gap-3 bg-red-50 border border-red-200">
+          <AlertCircle size={18} className="text-red-600 shrink-0" />
+          <p className="text-sm text-red-800">{error}</p>
+        </Card>
+      )}
+
+      {loading && firestoreMentors.length === 0 && (
+        <Card className="text-center py-8">Loading mentors...</Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {mentors.map((m, i) => (
           <motion.div
@@ -40,7 +74,12 @@ export default function MentorsPage() {
                   <Badge key={s} tone="neutral">{s}</Badge>
                 ))}
               </div>
-              <Button variant="primary" size="sm" className="mt-auto pt-0 w-full !mt-5">
+              <Button
+                variant="primary"
+                size="sm"
+                className="mt-auto pt-0 w-full !mt-5"
+                onClick={() => handleBookSession(m.id)}
+              >
                 <Calendar size={14} /> Book a session
               </Button>
             </Card>

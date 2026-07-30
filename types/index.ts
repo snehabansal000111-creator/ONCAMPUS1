@@ -20,6 +20,29 @@ export interface RoadmapItem {
   title: string;
   status: "done" | "in-progress" | "upcoming";
   category: string;
+  description?: string;
+  whyItMatters?: string;
+  conceptsToLearn?: string[];
+  learningObjectives?: string[];
+  estimatedDuration?: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  prerequisites?: string[];
+  miniProject?: {
+    title: string;
+    description: string;
+    steps: string[];
+  };
+  practiceTasks?: {
+    task: string;
+    difficulty: "easy" | "medium" | "hard";
+  }[];
+  freeResources?: {
+    title: string;
+    type: "documentation" | "video" | "tutorial" | "article" | "interactive" | "book";
+    url?: string;
+    description?: string;
+  }[];
+  completionChecklist?: string[];
 }
 
 export interface Mentor {
